@@ -1,0 +1,12 @@
+{
+  "domain": "pushover_next",
+  "name": "Pushover (Next)",
+  "codeowners": ["@neurolit"],
+  "config_flow": true,
+  "documentation": "https://github.com/neurolit/ha-pushover-next",
+  "issue_tracker": "https://github.com/neurolit/ha-pushover-next/issues",
+  "iot_class": "cloud_push",
+  "integration_type": "service",
+  "requirements": ["cryptography>=41.0.0"],
+  "version": "0.1.0"
+}
