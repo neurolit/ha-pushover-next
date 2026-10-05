@@ -147,16 +147,28 @@ class PushoverNextOptionsFlow(config_entries.OptionsFlow):
                 ): SelectSelector(SelectSelectorConfig(options=sound_options, custom_value=True)),
                 vol.Optional(
                     CONF_DEFAULT_TTL, default=current.get(CONF_DEFAULT_TTL, 0)
-                ): NumberSelector(NumberSelectorConfig(min=0, step=1)),
+                ): NumberSelector(
+                    NumberSelectorConfig(min=0, step=1, mode=NumberSelectorMode.BOX)
+                ),
                 vol.Optional(
                     CONF_DEFAULT_RETRY, default=current.get(CONF_DEFAULT_RETRY, 60)
                 ): NumberSelector(
-                    NumberSelectorConfig(min=MIN_RETRY_SECONDS, max=MAX_RETRY_SECONDS, step=1)
+                    NumberSelectorConfig(
+                        min=MIN_RETRY_SECONDS,
+                        max=MAX_RETRY_SECONDS,
+                        step=1,
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Optional(
                     CONF_DEFAULT_EXPIRE, default=current.get(CONF_DEFAULT_EXPIRE, 3600)
                 ): NumberSelector(
-                    NumberSelectorConfig(min=MIN_RETRY_SECONDS, max=MAX_EXPIRE_SECONDS, step=1)
+                    NumberSelectorConfig(
+                        min=MIN_RETRY_SECONDS,
+                        max=MAX_EXPIRE_SECONDS,
+                        step=1,
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
             }
         )
