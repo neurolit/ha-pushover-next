@@ -11,6 +11,15 @@ send_message:
       selector:
         config_entry:
           integration: pushover_next
+    device_id:
+      name: Device
+      description: >-
+        Alternative to Account: the Home Assistant device representing this
+        Pushover account. Pick this (instead of, or in addition to, Account)
+        so this action shows up under the integration's "Used in" list.
+      selector:
+        device:
+          integration: pushover_next
     message:
       name: Message
       description: The message body to send. 1 to 1024 characters.
@@ -202,6 +211,15 @@ cancel_receipt:
       selector:
         config_entry:
           integration: pushover_next
+    device_id:
+      name: Device
+      description: >-
+        Alternative to Account: the Home Assistant device representing this
+        Pushover account. Pick this (instead of, or in addition to, Account)
+        so this action shows up under the integration's "Used in" list.
+      selector:
+        device:
+          integration: pushover_next
     receipt:
       name: Receipt
       description: The receipt id returned by send_message for the original emergency-priority message.
@@ -219,6 +237,15 @@ cancel_by_tag:
       selector:
         config_entry:
           integration: pushover_next
+    device_id:
+      name: Device
+      description: >-
+        Alternative to Account: the Home Assistant device representing this
+        Pushover account. Pick this (instead of, or in addition to, Account)
+        so this action shows up under the integration's "Used in" list.
+      selector:
+        device:
+          integration: pushover_next
     tag:
       name: Tag
       description: The tag that was set on the original send_message call(s).
@@ -235,6 +262,15 @@ get_receipt:
       description: Which configured Pushover account/app to use. Only needed if you have more than one.
       selector:
         config_entry:
+          integration: pushover_next
+    device_id:
+      name: Device
+      description: >-
+        Alternative to Account: the Home Assistant device representing this
+        Pushover account. Pick this (instead of, or in addition to, Account)
+        so this action shows up under the integration's "Used in" list.
+      selector:
+        device:
           integration: pushover_next
     receipt:
       name: Receipt

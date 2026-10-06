@@ -44,6 +44,7 @@ ATTR_ATTACHMENT_TYPE = "attachment_type"
 ATTR_ENCRYPT = "encrypt"
 ATTR_RECEIPT = "receipt"
 ATTR_TAG = "tag"
+ATTR_DEVICE_ID = "device_id"
 
 PRIORITY_LOWEST = -2
 PRIORITY_LOW = -1

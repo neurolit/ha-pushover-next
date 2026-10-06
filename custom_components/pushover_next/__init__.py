@@ -27,6 +27,7 @@ from homeassistant.core import (
 )
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service import async_set_service_schema
 
@@ -38,6 +39,7 @@ from .const import (
     ATTR_ATTACHMENT_TYPE,
     ATTR_CALLBACK,
     ATTR_DEVICE,
+    ATTR_DEVICE_ID,
     ATTR_ENCRYPT,
     ATTR_EXPIRE,
     ATTR_HTML,
@@ -99,6 +101,7 @@ def _validate_tags(tags: list[str]) -> list[str]:
 SEND_MESSAGE_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_ENTRY): cv.string,
+        vol.Optional(ATTR_DEVICE_ID): cv.string,
         vol.Required(ATTR_MESSAGE): vol.All(cv.string, vol.Length(min=1, max=MAX_MESSAGE_LENGTH)),
         vol.Optional(ATTR_TITLE): vol.All(cv.string, vol.Length(min=1, max=MAX_TITLE_LENGTH)),
         vol.Optional(ATTR_PRIORITY): vol.All(vol.Coerce(int), vol.In(VALID_PRIORITIES)),
@@ -128,13 +131,25 @@ SEND_MESSAGE_SCHEMA = vol.Schema(
 )
 
 CANCEL_RECEIPT_SCHEMA = vol.Schema(
-    {vol.Optional(CONF_ENTRY): cv.string, vol.Required(ATTR_RECEIPT): cv.string}
+    {
+        vol.Optional(CONF_ENTRY): cv.string,
+        vol.Optional(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_RECEIPT): cv.string,
+    }
 )
 CANCEL_BY_TAG_SCHEMA = vol.Schema(
-    {vol.Optional(CONF_ENTRY): cv.string, vol.Required(ATTR_TAG): cv.string}
+    {
+        vol.Optional(CONF_ENTRY): cv.string,
+        vol.Optional(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_TAG): cv.string,
+    }
 )
 GET_RECEIPT_SCHEMA = vol.Schema(
-    {vol.Optional(CONF_ENTRY): cv.string, vol.Required(ATTR_RECEIPT): cv.string}
+    {
+        vol.Optional(CONF_ENTRY): cv.string,
+        vol.Optional(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_RECEIPT): cv.string,
+    }
 )
 
 _SERVICES_YAML_PATH = Path(__file__).parent / "services.yaml"
@@ -252,12 +267,49 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 
 def _resolve_entry(hass: HomeAssistant, call: ServiceCall) -> ConfigEntry:
-    """Pick which configured Pushover account/app a service call applies to."""
+    """Pick which configured Pushover account/app a service call applies to.
+
+    device_id is an alternative to config_entry_id that points at the
+    per-account device created in notify.py. It exists only so calls made
+    through it show up under this integration's "Used in" list in the UI -
+    Home Assistant's related-entity search tracks device_id/entity_id
+    references in automations/scripts, but has no idea config_entry_id in a
+    service call's data means anything.
+    """
     entries = hass.config_entries.async_entries(DOMAIN)
     if not entries:
         raise HomeAssistantError("No Pushover Next accounts are configured.")
 
     entry_id = call.data.get(CONF_ENTRY)
+    device_id = call.data.get(ATTR_DEVICE_ID)
+
+    if device_id:
+        device_entry = dr.async_get(hass).async_get(device_id)
+        if device_entry is None:
+            raise HomeAssistantError(f"Unknown device_id: {device_id}")
+
+        device_entry_ids = {
+            candidate_id
+            for candidate_id in device_entry.config_entries
+            if (candidate := hass.config_entries.async_get_entry(candidate_id)) is not None
+            and candidate.domain == DOMAIN
+        }
+        if not device_entry_ids:
+            raise HomeAssistantError(f"device_id {device_id} is not a Pushover Next device.")
+
+        if entry_id:
+            if entry_id not in device_entry_ids:
+                raise HomeAssistantError(
+                    "device_id and config_entry_id refer to different Pushover Next accounts."
+                )
+        elif len(device_entry_ids) == 1:
+            entry_id = next(iter(device_entry_ids))
+        else:
+            raise HomeAssistantError(
+                "device_id is shared by multiple Pushover Next accounts; "
+                "specify config_entry_id to choose one."
+            )
+
     if entry_id:
         entry = hass.config_entries.async_get_entry(entry_id)
         if entry is None or entry.domain != DOMAIN:
@@ -267,7 +319,7 @@ def _resolve_entry(hass: HomeAssistant, call: ServiceCall) -> ConfigEntry:
     if len(entries) > 1:
         raise HomeAssistantError(
             "Multiple Pushover Next accounts are configured; "
-            "specify config_entry_id to choose one."
+            "specify config_entry_id or device_id to choose one."
         )
     return entries[0]
 

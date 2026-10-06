@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import voluptuous as vol
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.pushover_next.api import PushoverClient, PushoverResponse
 from custom_components.pushover_next.const import (
@@ -29,6 +30,13 @@ from custom_components.pushover_next.const import (
 from custom_components.pushover_next.crypto import decrypt_field, generate_key
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+
+def _device_id_for_entry(hass, entry) -> str:
+    """Return the id of the per-account device notify.py registers for entry."""
+    device_registry = dr.async_get(hass)
+    [device] = dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+    return device.id
 
 _VALIDATE = "custom_components.pushover_next.api.PushoverClient.validate_user"
 _DISCOVER_DEVICES = "custom_components.pushover_next.async_discover_devices"
@@ -229,6 +237,31 @@ async def test_tags_total_length_limit(hass, entry):
         )
 
 
+async def test_send_message_with_device_id_resolves_entry(hass, entry):
+    mock_send = _mock_client(hass, entry)
+    device_id = _device_id_for_entry(hass, entry)
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SEND_MESSAGE,
+        {ATTR_MESSAGE: "hello", "device_id": device_id},
+        blocking=True,
+    )
+
+    mock_send.assert_called_once()
+
+
+async def test_send_message_with_unknown_device_id_rejected(hass, entry):
+    _mock_client(hass, entry)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SEND_MESSAGE,
+            {ATTR_MESSAGE: "hi", "device_id": "not-a-real-device"},
+            blocking=True,
+        )
+
+
 async def test_idempotent_service_registration_with_two_entries(hass):
     with (
         patch(_VALIDATE, new=AsyncMock(return_value={})),
@@ -267,3 +300,45 @@ async def test_idempotent_service_registration_with_two_entries(hass):
         blocking=True,
     )
     client1.send_message.assert_called_once()
+
+    # ...and device_id alone is just as good at disambiguating.
+    client1.send_message.reset_mock()
+    device_id1 = _device_id_for_entry(hass, entry1)
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SEND_MESSAGE,
+        {ATTR_MESSAGE: "hi", "device_id": device_id1},
+        blocking=True,
+    )
+    client1.send_message.assert_called_once()
+
+
+async def test_device_id_and_mismatched_config_entry_id_rejected(hass):
+    with (
+        patch(_VALIDATE, new=AsyncMock(return_value={})),
+        patch(_DISCOVER_DEVICES, new=AsyncMock(return_value=[])),
+        patch(_DISCOVER_SOUNDS, new=AsyncMock(return_value=[])),
+    ):
+        entry1 = MockConfigEntry(
+            domain=DOMAIN, unique_id="tok1:user1", data={CONF_API_TOKEN: "tok1", CONF_USER_KEY: "user1"}
+        )
+        entry1.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry1.entry_id)
+        await hass.async_block_till_done()
+
+        entry2 = MockConfigEntry(
+            domain=DOMAIN, unique_id="tok2:user2", data={CONF_API_TOKEN: "tok2", CONF_USER_KEY: "user2"}
+        )
+        entry2.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry2.entry_id)
+        await hass.async_block_till_done()
+
+    device_id1 = _device_id_for_entry(hass, entry1)
+
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SEND_MESSAGE,
+            {ATTR_MESSAGE: "hi", "device_id": device_id1, "config_entry_id": entry2.entry_id},
+            blocking=True,
+        )
