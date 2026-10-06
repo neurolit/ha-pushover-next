@@ -19,6 +19,7 @@ from custom_components.pushover_next.const import (
     ATTR_RETRY,
     ATTR_TAGS,
     ATTR_TITLE,
+    ATTR_URL,
     CONF_API_TOKEN,
     CONF_ENCRYPTION_KEY,
     CONF_USER_KEY,
@@ -233,6 +234,31 @@ async def test_tags_total_length_limit(hass, entry):
             DOMAIN,
             SERVICE_SEND_MESSAGE,
             {ATTR_MESSAGE: "hi", ATTR_TAGS: ["x" * 201]},
+            blocking=True,
+        )
+
+
+async def test_send_message_with_homeassistant_deep_link_url_succeeds(hass, entry):
+    mock_send = _mock_client(hass, entry)
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SEND_MESSAGE,
+        {ATTR_MESSAGE: "hi", ATTR_URL: "homeassistant://navigate/dashboard-prises/ouvertures"},
+        blocking=True,
+    )
+
+    sent_message = mock_send.call_args[0][0]
+    assert sent_message.url == "homeassistant://navigate/dashboard-prises/ouvertures"
+
+
+async def test_send_message_with_ftp_url_rejected(hass, entry):
+    _mock_client(hass, entry)
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SEND_MESSAGE,
+            {ATTR_MESSAGE: "hi", ATTR_URL: "ftp://example.com"},
             blocking=True,
         )
 

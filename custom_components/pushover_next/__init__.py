@@ -106,7 +106,7 @@ SEND_MESSAGE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_TITLE): vol.All(cv.string, vol.Length(min=1, max=MAX_TITLE_LENGTH)),
         vol.Optional(ATTR_PRIORITY): vol.All(vol.Coerce(int), vol.In(VALID_PRIORITIES)),
         vol.Optional(ATTR_SOUND): cv.string,
-        vol.Optional(ATTR_URL): vol.All(cv.url, vol.Length(max=MAX_URL_LENGTH)),
+        vol.Optional(ATTR_URL): vol.All(cv.configuration_url, vol.Length(max=MAX_URL_LENGTH)),
         vol.Optional(ATTR_URL_TITLE): vol.All(
             cv.string, vol.Length(min=1, max=MAX_URL_TITLE_LENGTH)
         ),

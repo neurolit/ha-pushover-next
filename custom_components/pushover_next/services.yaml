@@ -71,7 +71,8 @@ send_message:
       name: URL
       description: >-
         A supplementary URL to show with the message. Must be a valid
-        http(s) URL, 1 to 512 characters.
+        http(s) URL, or a homeassistant:// deep link (e.g. to navigate to a
+        dashboard in the companion app), 1 to 512 characters.
       example: "https://home.example.com"
       selector:
         text:
